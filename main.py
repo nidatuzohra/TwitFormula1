@@ -7,69 +7,68 @@ from wordcloud import WordCloud
 import auth
 import utils
 
+# Setting column width to max
+pd.set_option('display.max_colwidth', None)
+
 # Input a query from the user & filter to remove retweets
 query = input("Please enter a hashtag: ")
 actual_tweets = query + "-filter:retweets"
 
 # Generate the latest tweets on the given query
-tweets = tweepy.Cursor(auth.api.search_tweets, q=actual_tweets, lang="en").items(100)
+tweets = tweepy.Cursor(auth.api.search_tweets, q=actual_tweets, lang="en").items(20)
 
-# Create a list of the tweets, the users, and their location
-list1 = [[tweet.text, tweet.user.screen_name, tweet.user.location] for tweet in tweets]
+# Fetch the tweets and screen name and store it in a list
+list1 = [[tweet.text, tweet.user.screen_name] for tweet in tweets]
 
 # Convert the list into a dataframe
-df = pd.DataFrame(data=list1, columns=['tweets', 'user', "location"])
+df = pd.DataFrame(data=list1, columns=['tweets', 'user'])
 
 # Convert only the tweets into a list
 tweet_list = df.tweets.to_list()
 
 # Data cleaning
 cleaned = [utils.clean_tweet(tw) for tw in tweet_list]
-print("List of tweet", cleaned)
-print("Number of tweet", len(cleaned))
 
 # Define the sentiment objects using TextBlob
 sentiment_objects = [TextBlob(tweet) for tweet in cleaned]
-print("Sentiment objects: ", sentiment_objects[0].polarity, sentiment_objects[0])
 
 # Create a list of polarity values and tweet text
 sentiment_values = [[tweet.sentiment.polarity, str(tweet)] for tweet in sentiment_objects]
-# Print the value of the 0th row.
-print("Sentiment values: ", sentiment_values[0])
-
-# Print all the sentiment values
-print("All sentiment values: ", sentiment_values[0:99])
 
 # Create a dataframe of each tweet against its polarity
-sentiment_df = pd.DataFrame(sentiment_values, columns=["polarity", "tweet"])
-print("Sentiment data frame: \n", sentiment_df)
+sentiment_df = pd.DataFrame(sentiment_values, columns=["Polarity", "Tweet"])
 
-# Save the polarity column as 'n'.
-n = sentiment_df["polarity"]
+print("Polarity data frame: \n", sentiment_df)
 
-# Convert this column into a series, 'm'.
-m = pd.Series(n)
-print(m)
+# Save the polarity column in a separate variable.
+polarity_column = sentiment_df["Polarity"]
 
-# Initialize variables, 'pos', 'neg', 'neu'.
+# Convert this column into a series.
+polarity_series = pd.Series(polarity_column)
+
+# Save the sentiments in a list
 pos = 0
 neg = 0
 neu = 0
+sentiment = []
 
 # Create a loop to classify the tweets as Positive, Negative, or Neutral.
-# Count the number of each.
-for items in m:
+for items in polarity_series:
     if items > 0:
-        print("Positive")
         pos = pos + 1
+        sentiment.append("Positive")
     elif items < 0:
-        print("Negative")
         neg = neg + 1
+        sentiment.append("Negative")
     else:
-        print("Neutral")
         neu = neu + 1
+        sentiment.append("Neutral")
 
-print("Positive:", pos, "Negative:", neg, "Neutral:", neu)
+# Add the sentiment list in our dataframe to see sentiment for every tweet.
+sentiment_df['Polarity'] = sentiment
+sentiment_df2 = sentiment_df.rename({'Polarity': 'Sentiment'}, axis=1)
+print("Sentiment data frame: \n", sentiment_df2)
+
 
 # Plot a pie chart
 pieLabels = ["Positive", "Negative", "Neutral"]
